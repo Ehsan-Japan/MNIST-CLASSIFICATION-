@@ -1,0 +1,55 @@
+import tensorflow as tf
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.models import load_model
+import matplotlib.pyplot as plt
+
+# mnistを読みこみます
+mnist = tf.keras.datasets.mnist
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# 0-255の値が入っているので、0-1に収まるよう正規化します
+x_train, x_test = x_train / 255.0, x_test / 255.0
+
+# データを確認
+print(x_train.shape, x_test.shape); print()
+
+# Sequentialモデルを定義します
+model = tf.keras.models.Sequential([
+  tf.keras.layers.Flatten(input_shape=(28, 28)),
+  tf.keras.layers.Dense(128, activation='relu'),
+  tf.keras.layers.Dropout(0.2),
+  tf.keras.layers.Dense(10, activation='softmax')
+])
+
+# モデルをcompileします
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# ベストを更新したときだけモデルを保存しておく
+modelCheckpoint = ModelCheckpoint(filepath = '../tmp.h5',
+                                  monitor = 'val_loss',
+                                  verbose = 1,
+                                  save_best_only = True,)
+
+# 学習します
+hist = model.fit(x_train, y_train, validation_split=0.1, epochs=100, verbose=1,
+                 callbacks=[modelCheckpoint])
+
+# テストデータの予測精度を計算します
+print('modelのスコア')
+print(model.evaluate(x_test, y_test), '\n')
+
+# 保存されてるモデルによるテストデータの予測精度を計算します
+best_model = load_model('../tmp.h5')
+print('ModelCheckPointのスコア')
+print(best_model.evaluate(x_test, y_test))
+
+# 学習曲線を出力しておきます
+plt.figure(figsize=(5,4))
+plt.plot(hist.epoch, hist.history['loss'], label='loss')
+plt.plot(hist.epoch, hist.history['val_loss'], label='val_loss')
+plt.xlabel('epoch')
+plt.ylabel('loss: sparse_categorical_crossentropy')
+plt.legend()
+plt.show()
